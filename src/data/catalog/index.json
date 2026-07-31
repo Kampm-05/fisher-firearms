@@ -1,0 +1,92 @@
+[
+  {
+    "category": "air-rifles",
+    "count": 1,
+    "ship": 0,
+    "reserve": 1
+  },
+  {
+    "category": "ammunition",
+    "count": 232,
+    "ship": 0,
+    "reserve": 232
+  },
+  {
+    "category": "centrefire",
+    "count": 35,
+    "ship": 0,
+    "reserve": 35
+  },
+  {
+    "category": "gun-care",
+    "count": 39,
+    "ship": 15,
+    "reserve": 3
+  },
+  {
+    "category": "handguns",
+    "count": 7,
+    "ship": 0,
+    "reserve": 7
+  },
+  {
+    "category": "hunting",
+    "count": 1,
+    "ship": 0,
+    "reserve": 0
+  },
+  {
+    "category": "lighting",
+    "count": 5,
+    "ship": 2,
+    "reserve": 0
+  },
+  {
+    "category": "optics",
+    "count": 17,
+    "ship": 7,
+    "reserve": 0
+  },
+  {
+    "category": "parts",
+    "count": 103,
+    "ship": 69,
+    "reserve": 20
+  },
+  {
+    "category": "reloading",
+    "count": 58,
+    "ship": 10,
+    "reserve": 21
+  },
+  {
+    "category": "rimfire",
+    "count": 28,
+    "ship": 0,
+    "reserve": 28
+  },
+  {
+    "category": "shotguns",
+    "count": 9,
+    "ship": 0,
+    "reserve": 9
+  },
+  {
+    "category": "storage",
+    "count": 6,
+    "ship": 0,
+    "reserve": 0
+  },
+  {
+    "category": "targets",
+    "count": 13,
+    "ship": 3,
+    "reserve": 0
+  },
+  {
+    "category": "used",
+    "count": 65,
+    "ship": 0,
+    "reserve": 65
+  }
+]

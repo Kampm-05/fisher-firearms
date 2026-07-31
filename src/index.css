@@ -1,0 +1,178 @@
+@import 'tailwindcss';
+
+/*
+  Fisher Firearms design system
+  Style: Modern Dark (cinematic) — gunmetal base, brass accent.
+  Never pure #000 (OLED smear); accent pairs checked for 4.5:1 on surface.
+*/
+@theme {
+  --font-display: 'Barlow Condensed', system-ui, sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Surfaces — gunmetal ramp */
+  --color-void: #0d1013;
+  --color-steel-950: #101418;
+  --color-steel-900: #161b21;
+  --color-steel-800: #1e252d;
+  --color-steel-700: #2b343e;
+  --color-steel-600: #3d4854;
+  --color-steel-500: #5b6875;
+  --color-steel-400: #8794a1;
+  --color-steel-300: #b3bdc7;
+  --color-steel-200: #d6dce2;
+  --color-steel-100: #eef1f4;
+
+  /* Brass accent */
+  --color-brass-600: #8a6a1f;
+  --color-brass-500: #b8912f;
+  --color-brass-400: #d4a843;
+  --color-brass-300: #e5c06a;
+  --color-brass-200: #f0d79b;
+
+  /* Semantic */
+  --color-danger: #dc2626;
+
+  /* Motion tokens — one rhythm across the whole site */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-void);
+    color: var(--color-steel-200);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--color-steel-100);
+    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    background-color: var(--color-brass-400);
+    color: var(--color-void);
+  }
+
+  /* Visible focus ring on every interactive element (a11y priority 1) */
+  :focus-visible {
+    outline: 2px solid var(--color-brass-400);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  .text-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-brass-400);
+  }
+
+  /* Fine engraved grid — reads as machined metal, not decoration */
+  .bg-engrave {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.028) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.028) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .bg-hairline {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      var(--color-steel-700),
+      transparent
+    );
+  }
+
+  /* Shared button shapes — the hero defined these inline first; the shop
+     pages reuse them so every CTA on the site matches. */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 2px;
+    background-color: var(--color-brass-400);
+    padding: 0.9rem 1.75rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-void);
+    transition: background-color 0.2s;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-brass-300);
+  }
+  .btn-primary:disabled {
+    background-color: var(--color-steel-700);
+    color: var(--color-steel-400);
+    cursor: not-allowed;
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 2px;
+    border: 1px solid var(--color-steel-700);
+    padding: 0.9rem 1.75rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-steel-200);
+    transition:
+      border-color 0.2s,
+      color 0.2s;
+  }
+  .btn-ghost:hover {
+    border-color: var(--color-brass-500);
+    color: var(--color-brass-300);
+  }
+
+  .field {
+    width: 100%;
+    border-radius: 2px;
+    border: 1px solid var(--color-steel-700);
+    background-color: rgb(0 0 0 / 0.25);
+    padding: 0.7rem 0.9rem;
+    color: var(--color-steel-100);
+  }
+  .field::placeholder {
+    color: var(--color-steel-600);
+  }
+  .field:focus {
+    border-color: var(--color-brass-500);
+    outline: none;
+  }
+}
+
+/* Honour reduced-motion globally: kill transforms/animation, keep content visible */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
