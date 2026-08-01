@@ -1,0 +1,14 @@
+{
+  "name": "fisher-firearms-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "index": "node build-index.mjs",
+    "dev": "npm run index && wrangler dev",
+    "deploy": "npm run index && wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

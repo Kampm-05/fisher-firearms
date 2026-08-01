@@ -1,8 +1,12 @@
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, Clock, MapPin, Phone } from 'lucide-react'
 import { fadeUp, inView, stagger } from '../lib/motion'
 import { business, hours, notices } from '../data/site'
+import { fetchOrder, type OrderStatus } from '../lib/api'
+import { useCart } from '../cart/CartContext'
+import { formatPrice } from '../data/catalog'
 
 type ConfirmState = {
   name?: string
@@ -13,7 +17,44 @@ type ConfirmState = {
 
 export default function OrderConfirmed() {
   const { state } = useLocation() as { state: ConfirmState | null }
-  const name = state?.name?.split(' ')[0]
+  const [params] = useSearchParams()
+  const sessionId = params.get('session_id')
+  const { clear } = useCart()
+
+  // Arriving back from Stripe: confirm the payment actually went through
+  // before telling anyone it did.
+  const [order, setOrder] = useState<OrderStatus | null>(null)
+  const [loading, setLoading] = useState(Boolean(sessionId))
+
+  useEffect(() => {
+    if (!sessionId) return
+    let live = true
+    fetchOrder(sessionId)
+      .then((o) => {
+        if (!live) return
+        setOrder(o)
+        // Only empty the cart once the money is confirmed.
+        if (o.paid) clear()
+      })
+      .catch(() => {})
+      .finally(() => live && setLoading(false))
+    return () => {
+      live = false
+    }
+  }, [sessionId, clear])
+
+  const name = order?.customer?.name?.split(' ')[0] ?? state?.name?.split(' ')[0]
+  const hadReserve = order ? order.reserveLines.length > 0 : state?.hadReserve
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-3xl px-5 py-32 text-center sm:px-8">
+        <p className="font-mono text-sm tracking-widest text-steel-500 uppercase">
+          Confirming your payment…
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-24 sm:px-8 sm:py-32">
@@ -29,7 +70,7 @@ export default function OrderConfirmed() {
           variants={fadeUp}
           className="mt-8 text-center font-display text-4xl font-700 tracking-tight uppercase"
         >
-          Order received
+          {order?.paid ? 'Payment received' : 'Order received'}
         </motion.h1>
 
         <motion.p
@@ -77,7 +118,35 @@ export default function OrderConfirmed() {
           </motion.p>
         )}
 
-        {state?.hadReserve && (
+        {order?.paid && (
+          <motion.div
+            variants={fadeUp}
+            className="mt-8 rounded-sm border border-brass-600/40 bg-brass-500/5 p-6"
+          >
+            <h2 className="text-eyebrow">Paid today</h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              {order.shipLines.map((l) => (
+                <li key={l.slug} className="flex justify-between gap-3">
+                  <span className="text-steel-300">
+                    {l.qty}× {l.name}
+                  </span>
+                  <span className="font-mono text-steel-200">
+                    {formatPrice(l.price * l.qty)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 flex justify-between border-t border-brass-600/30 pt-3 font-mono text-brass-200">
+              <span>Total paid</span>
+              <span>{formatPrice(order.amount)}</span>
+            </p>
+            <p className="mt-3 text-sm text-steel-400">
+              A receipt is on its way to your email. We'll post these out to you.
+            </p>
+          </motion.div>
+        )}
+
+        {hadReserve && (
           <motion.div
             variants={fadeUp}
             className="mt-10 rounded-sm border border-steel-800 bg-steel-900/50 p-6"

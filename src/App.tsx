@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Header from './components/Header'
@@ -12,6 +12,10 @@ import OrderConfirmed from './pages/OrderConfirmed'
 import About from './pages/About'
 import GiftCertificates from './pages/GiftCertificates'
 import CartDrawer from './cart/CartDrawer'
+
+// The shop's back office — its own chunk, never shipped to customers who
+// don't visit /admin.
+const AdminShell = lazy(() => import('./admin/AdminShell'))
 import FirearmCategory from './pages/FirearmCategory'
 import Gear from './pages/Gear'
 import Contact from './pages/Contact'
@@ -37,6 +41,27 @@ function ScrollManager() {
 
 export default function App() {
   const location = useLocation()
+
+  /*
+   * The admin panel is a different application wearing the same paint: its own
+   * full-height chrome, no shop header, footer or cart. Rendering it outside
+   * the customer layout keeps the two from interfering.
+   */
+  if (location.pathname.startsWith('/admin')) {
+    return (
+      <Suspense
+        fallback={
+          <div className="grid min-h-dvh place-items-center">
+            <p className="font-mono text-sm tracking-widest text-steel-500 uppercase">
+              Loading…
+            </p>
+          </div>
+        }
+      >
+        <AdminShell />
+      </Suspense>
+    )
+  }
 
   return (
     <div className="flex min-h-dvh flex-col">

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Lock, ShoppingBag, Clock } from 'lucide-react'
-import { formatPrice, productImage, type Product } from '../data/catalog'
+import { formatPrice, isSoldOut, productImage, type Product } from '../data/catalog'
 import { fadeUp } from '../lib/motion'
 
 const BADGE = {
@@ -11,8 +11,12 @@ const BADGE = {
 } as const
 
 export default function ProductCard({ product }: { product: Product }) {
-  const badge = BADGE[product.saleType]
+  const soldOut = isSoldOut(product)
+  const badge = soldOut
+    ? { icon: Lock, label: 'Sold out', tone: 'text-steel-400 border-steel-700 bg-steel-950/80' }
+    : BADGE[product.saleType]
   const Icon = badge.icon
+  const low = product.stock != null && product.stock > 0 && product.stock <= 5
 
   return (
     <motion.div variants={fadeUp}>
@@ -28,7 +32,9 @@ export default function ProductCard({ product }: { product: Product }) {
               alt=""
               loading="lazy"
               decoding="async"
-              className="relative h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-[1.04]"
+              className={`relative h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-[1.04] ${
+                soldOut ? 'opacity-35 grayscale' : ''
+              }`}
             />
           ) : (
             <div className="relative grid h-full place-items-center">
@@ -53,9 +59,20 @@ export default function ProductCard({ product }: { product: Product }) {
           <h3 className="line-clamp-2 text-sm leading-snug font-500 text-steel-100 transition-colors group-hover:text-brass-200">
             {product.name}
           </h3>
-          <p className="mt-auto pt-3 font-mono text-base text-brass-300">
-            {formatPrice(product.price)}
-          </p>
+          <div className="mt-auto pt-3">
+            <p
+              className={`font-mono text-base ${
+                soldOut ? 'text-steel-500 line-through' : 'text-brass-300'
+              }`}
+            >
+              {formatPrice(product.price)}
+            </p>
+            {low && (
+              <p className="mt-1 font-mono text-[0.65rem] tracking-widest text-amber-400/90 uppercase">
+                Only {product.stock} left
+              </p>
+            )}
+          </div>
         </div>
       </Link>
     </motion.div>

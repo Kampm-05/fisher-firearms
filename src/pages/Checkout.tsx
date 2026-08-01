@@ -4,13 +4,11 @@ import { motion } from 'framer-motion'
 import { AlertCircle, CreditCard, Lock, ShoppingBag } from 'lucide-react'
 import { useCart } from '../cart/CartContext'
 import { submitOrder, type OrderDetails } from '../cart/submitOrder'
+import { createCheckout, hasApi } from '../lib/api'
 import { formatPrice } from '../data/catalog'
 import PageHeader from '../components/PageHeader'
 import { fadeUp, inView } from '../lib/motion'
 import { business, notices } from '../data/site'
-
-/** Set once the shop has a Stripe account; until then the card step is mocked. */
-const STRIPE_PK = import.meta.env.VITE_STRIPE_PK ?? ''
 
 export default function Checkout() {
   const navigate = useNavigate()
@@ -23,7 +21,12 @@ export default function Checkout() {
   })
   const [ack, setAck] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    // Stripe sends the customer back here with ?cancelled=1 if they back out.
+    new URLSearchParams(window.location.search).has('cancelled')
+      ? 'Payment was cancelled — your cart is still here.'
+      : null
+  )
 
   const set = <K extends keyof OrderDetails>(key: K, value: OrderDetails[K]) =>
     setDetails((d) => ({ ...d, [key]: value }))
@@ -45,6 +48,36 @@ export default function Checkout() {
     e.preventDefault()
     setError(null)
     setBusy(true)
+
+    /*
+     * If the shop's payment API is live and there's something shippable in the
+     * cart, hand off to Stripe's hosted checkout. The server re-prices every
+     * line and refuses anything licensed, so a tampered cart can't get through.
+     * Reserve-only orders never touch Stripe — nothing is charged for them.
+     */
+    if (hasApi() && shipLines.length > 0) {
+      try {
+        const { url } = await createCheckout({
+          lines: shipLines.map((l) => ({ slug: l.slug, qty: l.qty })),
+          reserveLines: reserveLines.map((l) => ({
+            slug: l.slug,
+            name: l.name,
+            price: l.price,
+            qty: l.qty,
+          })),
+          customer: { ...details },
+        })
+        // Leave the cart intact: if they abandon payment it's still there.
+        window.location.href = url
+        return
+      } catch (err) {
+        setBusy(false)
+        setError(
+          err instanceof Error ? err.message : 'Could not start the payment.'
+        )
+        return
+      }
+    }
 
     const result = await submitOrder(lines, details)
     setBusy(false)
@@ -211,9 +244,11 @@ export default function Checkout() {
                   <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
                   Payment for shipped items
                 </h2>
-                {STRIPE_PK ? (
+                {hasApi() ? (
                   <p className="mt-3 text-sm text-steel-400">
-                    You'll be taken to our secure card checkout after submitting.
+                    You'll be taken to our secure card checkout to pay for the
+                    items being posted to you. Anything reserved is settled in
+                    store.
                   </p>
                 ) : (
                   <p className="mt-3 flex items-start gap-2 text-sm text-amber-300/90">
@@ -235,7 +270,11 @@ export default function Checkout() {
             )}
 
             <button type="submit" disabled={busy} className="btn-primary w-full justify-center">
-              {busy ? 'Sending…' : 'Place order'}
+              {busy
+                ? 'Just a moment…'
+                : hasApi() && shipLines.length > 0
+                  ? 'Continue to payment'
+                  : 'Place order'}
             </button>
 
             <p className="text-xs leading-relaxed text-steel-600">{notices.licence}</p>

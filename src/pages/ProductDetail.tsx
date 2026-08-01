@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Lock, Phone, ShoppingBag } from 'lucide-react'
 import {
   findProduct,
   formatPrice,
+  isSoldOut,
   productImage,
   SALE_LABEL,
   type Product,
@@ -79,6 +80,8 @@ export default function ProductDetail() {
 
   const isReserve = product.saleType === 'reserve'
   const isEnquire = product.saleType === 'enquire'
+  const soldOut = isSoldOut(product)
+  const low = product.stock != null && product.stock > 0 && product.stock <= 5
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-20">
@@ -135,8 +138,13 @@ export default function ProductDetail() {
           <dl className="mt-6 space-y-2 text-sm">
             <div className="flex gap-3">
               <dt className="w-28 shrink-0 text-steel-500">Availability</dt>
-              <dd className="text-steel-200">
-                {SALE_LABEL[product.saleType]}
+              <dd className={soldOut ? 'text-steel-400' : 'text-steel-200'}>
+                {soldOut ? 'Sold out' : SALE_LABEL[product.saleType]}
+                {low && (
+                  <span className="ml-2 font-mono text-xs tracking-widest text-amber-400/90 uppercase">
+                    only {product.stock} left
+                  </span>
+                )}
               </dd>
             </div>
             {product.code && (
@@ -154,7 +162,12 @@ export default function ProductDetail() {
           </dl>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            {isEnquire ? (
+            {soldOut ? (
+              <button type="button" disabled className="btn-primary">
+                <Lock className="h-4 w-4" aria-hidden="true" />
+                Sold out
+              </button>
+            ) : isEnquire ? (
               <a href={business.phoneHref} className="btn-primary">
                 <Phone className="h-4 w-4" aria-hidden="true" />
                 Call to order

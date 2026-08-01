@@ -26,3 +26,8 @@ dist-ssr
 # Scraper checkpoints (regenerate with scripts/scrape.mjs)
 scripts/.cache/
 
+
+# Worker local secrets
+worker/.dev.vars
+worker/.wrangler/
+worker/node_modules/
