@@ -33,6 +33,9 @@ jobs:
         env:
           # Project sites are served from /<repo>/, so the bundle needs that base.
           VITE_BASE: /${{ github.event.repository.name }}/
+          # The shop's API (Cloudflare Worker): live stock, payments, admin.
+          # Unset simply means the site falls back to its built-in catalogue.
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
         run: npm run build
 
       - name: Add SPA fallback

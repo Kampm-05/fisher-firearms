@@ -8,11 +8,11 @@ SITE_URL = "https://kampm-05.github.io/fisher-firearms"
 ALLOWED_ORIGINS = "https://kampm-05.github.io,http://localhost:5180,http://localhost:5199"
 
 # Stock, orders and admin sessions.
-# `wrangler dev` ignores this id and uses local storage; replace it with the
-# real one from `wrangler kv namespace create SHOP_KV` before deploying.
+# `wrangler dev` ignores this id and keeps its own local copy, so developing
+# never touches the shop's real data.
 [[kv_namespaces]]
 binding = "SHOP_KV"
-id = "local_placeholder_replace_before_deploy"
+id = "b51b87ad214a4e7582fb0a38a38bbb4a"
 
 # Secrets — set with `wrangler secret put <NAME>`, never committed:
 #   STRIPE_SECRET_KEY      sk_test_... (or sk_live_... when going live)

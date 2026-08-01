@@ -31,3 +31,7 @@ scripts/.cache/
 worker/.dev.vars
 worker/.wrangler/
 worker/node_modules/
+
+# Generated secrets — never commit
+worker/.adminpw
+worker/.whsec
