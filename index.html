@@ -23,11 +23,29 @@
 
     <!-- Keeps a Stripe session id out of any third party's referrer log. -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
+    <!--
+      What this page is allowed to load. GitHub Pages serves a fixed set of
+      response headers and gives no way to add one, so the policy travels in
+      the document instead. A meta policy covers everything here except
+      frame-ancestors, which browsers only honour from a real header — see
+      HANDOFF.md for the fix that comes with the custom domain.
+
+      Fonts, styles and scripts are all first-party now. The only outside
+      origin the page talks to is the shop's own API.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               base-uri 'self';
+               object-src 'none';
+               img-src 'self' data: blob:;
+               font-src 'self';
+               style-src 'self' 'unsafe-inline';
+               script-src 'self';
+               connect-src 'self' https://fisher-firearms-api.fisher-firearms.workers.dev;
+               form-action 'self' https://checkout.stripe.com;
+               frame-ancestors 'none';
+               upgrade-insecure-requests"
     />
     <title>Fisher Firearms — Adelaide's Largest Gun Shop | Norwood SA</title>
   </head>

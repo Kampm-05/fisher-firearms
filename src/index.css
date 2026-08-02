@@ -1,6 +1,31 @@
 @import 'tailwindcss';
 
 /*
+  Typefaces, served from this site rather than Google's CDN.
+
+  Loading them from fonts.googleapis.com meant a third party saw every
+  visitor's IP and the page they were on, the shop's fonts could break for
+  reasons nobody here controls, and the stylesheet could never carry an
+  integrity hash — Google serves different CSS per browser, so there is no
+  fixed hash to pin. Self-hosting removes all three, and the whole latin set
+  is 256 KB, cached forever after the first visit.
+
+  Vite rewrites these paths at build time, which is why they are relative:
+  the site is served from a subdirectory and an absolute /fonts/… would 404.
+*/
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/barlow-condensed-400.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/barlow-condensed-500.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/barlow-condensed-600.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/barlow-condensed-700.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow'; font-style: normal; font-weight: 300; font-display: swap; src: url('./assets/fonts/barlow-300.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/barlow-400.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/barlow-500.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/barlow-600.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/barlow-700.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/jetbrains-mono-400.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/jetbrains-mono-500.woff2') format('woff2'); }
+
+/*
   Fisher Firearms design system
   Style: Modern Dark (cinematic) — gunmetal base, brass accent.
   Never pure #000 (OLED smear).

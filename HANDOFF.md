@@ -98,6 +98,50 @@ be unavailable, and those could fall back to phone orders.
 To go live: swap in `sk_live_…`, create a live-mode webhook pointing at
 `/api/stripe-webhook`, and set the new `whsec_…`. Nothing else changes.
 
+## Security headers, and why a scanner still complains
+
+A ZAP scan of the Pages site reports missing `Content-Security-Policy`,
+`X-Frame-Options`, `X-Content-Type-Options`, and an over-broad
+`Access-Control-Allow-Origin: *`.
+
+**GitHub Pages serves a fixed set of response headers and provides no way to
+add one.** That is a hosting limitation, not something in this code. What has
+been done within it:
+
+- **CSP** now travels in a `<meta http-equiv>` tag in `index.html`. It covers
+  every directive a meta policy can carry, and it is tight: `default-src
+  'self'`, no `object-src`, and the only outside origin the page may talk to is
+  the shop's own API.
+- **Fonts are self-hosted.** They used to load from Google's CDN, which meant a
+  third party saw every visitor, and the stylesheet could never carry an
+  integrity hash — Google serves different CSS per browser, so there is no
+  fixed hash to pin. That is what a scanner reports as "Sub Resource Integrity
+  Attribute Missing". The page now loads **nothing** from any outside origin.
+- **Clickjacking** is handled in `src/main.tsx`, because browsers ignore
+  `frame-ancestors` in a meta tag. It is a frame-buster, which is weaker than
+  the header.
+- `Access-Control-Allow-Origin: *` is GitHub's own default on Pages assets. The
+  files are public static assets with no credentials attached, so nothing is
+  exposed by it — but it cannot be changed either.
+- The **API** does set `X-Content-Type-Options` and `Referrer-Policy`, and its
+  CORS is restricted to the shop's origins. That is the half of the system that
+  handles money and customer details.
+
+**The proper fix comes free with the custom domain.** Point
+`fisherfirearms.com.au` at Cloudflare — the account already exists — and add
+one Transform Rule (Rules → Transform Rules → Modify Response Header) setting
+`Content-Security-Policy`, `X-Frame-Options: DENY`,
+`X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
+and `Strict-Transport-Security`. Every one of the header findings clears, and
+the frame-buster in `main.tsx` can be deleted.
+
+Two scanner results worth ignoring: anything reported against
+`kampm-05.github.io/` **without** the `/fisher-firearms/` prefix is GitHub's own
+404 page, not this site — all three of those URLs return 404. And
+"Information Disclosure — Suspicious Comments" is the words `admin`, `password`
+and `query` appearing in minified code as ordinary parameter names. No secret
+is present in the bundle.
+
 ## Custom domain
 
 For `fisherfirearms.com.au`:
