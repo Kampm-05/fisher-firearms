@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { AlertCircle, CreditCard, Lock, ShoppingBag, Trash2 } from 'lucide-react'
 import { useCart } from '../cart/CartContext'
 import { forgetReserve, rememberReserve } from '../cart/reserveReference'
+import { forgetGiftNote, readGiftNote } from '../cart/giftNote'
 import { submitOrder, type OrderDetails } from '../cart/submitOrder'
 import { CartError, createCheckout, createReserve, hasApi, type LineError } from '../lib/api'
 import { formatPrice } from '../data/catalog'
@@ -19,7 +20,9 @@ export default function Checkout() {
   } = useCart()
 
   const [details, setDetails] = useState<OrderDetails>({
-    name: '', email: '', phone: '', licence: '', notes: '', fulfilment: 'pickup',
+    // A gift certificate's recipient is asked for on its own page; this is
+    // where the shop reads it back off the order.
+    name: '', email: '', phone: '', licence: '', notes: readGiftNote(), fulfilment: 'pickup',
   })
   const [ack, setAck] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -91,6 +94,8 @@ export default function Checkout() {
           })
           // Router state doesn't survive the trip out to Stripe and back.
           if (reference) rememberReserve(reference)
+          // The recipient is on the order now, so the next one starts clean.
+          forgetGiftNote()
           // Leave the cart intact: if they abandon payment it's still there.
           window.location.href = url
           return
@@ -103,6 +108,7 @@ export default function Checkout() {
           slug, name, price, qty,
         }))
         clear()
+        forgetGiftNote()
         navigate('/order-confirmed', {
           state: { name: details.name, via: 'reserve', hadReserve: true, reference, reserved },
         })

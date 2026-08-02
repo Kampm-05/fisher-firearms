@@ -18,6 +18,12 @@
     "reserve": 35
   },
   {
+    "category": "gift-certificates",
+    "count": 4,
+    "ship": 4,
+    "reserve": 0
+  },
+  {
     "category": "gun-care",
     "count": 39,
     "ship": 15,

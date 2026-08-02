@@ -197,6 +197,39 @@ async function main() {
     counted++
   }
 
+  /*
+   * Gift certificates are the shop's own product, not something scraped, but
+   * they have to be generated here rather than hand-written into the catalogue
+   * folder — the line below wipes that folder on every run, and a file the
+   * scrape doesn't know about would disappear the first time anyone refreshed
+   * the stock.
+   *
+   * They are ordinary retail: no licence, no permit, nothing regulated, so
+   * they are the one thing on the site that can simply be bought and posted.
+   */
+  byCategory.set(
+    'gift-certificates',
+    [50, 100, 250, 500].map((amount) => ({
+      slug: `gift-certificate-${amount}`,
+      name: `Fisher Firearms Gift Certificate — $${amount}`,
+      price: amount,
+      brand: 'Fisher Firearms',
+      code: `GC${amount}`,
+      image: null,
+      description:
+        `A $${amount} gift certificate, redeemable in store against anything we stock — ` +
+        'firearms, ammunition, optics, reloading gear or clothing. ' +
+        'Licensed items still require the buyer to hold a current SA firearms licence ' +
+        'at the time they collect. No expiry is applied by the website; ' +
+        'ask the shop if you need one dated.',
+      availability: 'In stock',
+      subLabel: 'Gift Certificates',
+      category: 'gift-certificates',
+      categories: ['gift-certificates'],
+      saleType: 'ship',
+    }))
+  )
+
   await rm(OUT_DIR, { recursive: true, force: true })
   await mkdir(OUT_DIR, { recursive: true })
 
