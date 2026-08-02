@@ -6,13 +6,16 @@ import { fadeUp, inView, stagger } from '../lib/motion'
 import { business, hours, notices } from '../data/site'
 import { fetchOrder, type OrderStatus } from '../lib/api'
 import { useCart } from '../cart/CartContext'
+import { readReserve } from '../cart/reserveReference'
 import { formatPrice } from '../data/catalog'
 
 type ConfirmState = {
   name?: string
-  via?: 'formspree' | 'mailto' | 'phone'
+  via?: 'formspree' | 'mailto' | 'phone' | 'reserve'
   hadReserve?: boolean
   summary?: string
+  reference?: string | null
+  reserved?: OrderStatus['reserveLines']
 }
 
 export default function OrderConfirmed() {
@@ -21,30 +24,53 @@ export default function OrderConfirmed() {
   const sessionId = params.get('session_id')
   const { clear } = useCart()
 
-  // Arriving back from Stripe: confirm the payment actually went through
-  // before telling anyone it did.
+  // Arriving back from Stripe: pull up what was actually bought.
   const [order, setOrder] = useState<OrderStatus | null>(null)
+  const [failed, setFailed] = useState(false)
   const [loading, setLoading] = useState(Boolean(sessionId))
+
+  // A reservation lodged before the trip out to Stripe waits here. It is left
+  // in place so a refresh doesn't lose it; the next order clears it.
+  const [stashed] = useState(readReserve)
 
   useEffect(() => {
     if (!sessionId) return
     let live = true
+
+    /*
+     * Emptied on arrival, not on a successful lookup. Stripe only sends
+     * anyone here once the card has been charged, so leaving paid goods
+     * sitting in the cart because a status call happened to fail is an
+     * invitation to pay for them a second time.
+     */
+    clear()
+
     fetchOrder(sessionId)
-      .then((o) => {
-        if (!live) return
-        setOrder(o)
-        // Only empty the cart once the money is confirmed.
-        if (o.paid) clear()
-      })
-      .catch(() => {})
+      .then((o) => live && setOrder(o))
+      // The money is safe either way; say so rather than hide behind a tick.
+      .catch(() => live && setFailed(true))
       .finally(() => live && setLoading(false))
+
     return () => {
       live = false
     }
   }, [sessionId, clear])
 
   const name = order?.customer?.name?.split(' ')[0] ?? state?.name?.split(' ')[0]
-  const hadReserve = order ? order.reserveLines.length > 0 : state?.hadReserve
+  const isReserve = order ? order.kind === 'reserve' : state?.via === 'reserve'
+
+  // A payment order's reference is its Stripe session; only a reservation's is
+  // worth quoting, and a mixed order's was stashed before the redirect.
+  const reference = order?.kind === 'reserve'
+    ? order.reference
+    : (state?.reference ?? stashed)
+
+  const reservedLines =
+    order?.kind === 'reserve' ? order.reserveLines : (state?.reserved ?? [])
+
+  const hadReserve =
+    Boolean(reference) ||
+    (order ? order.reserveLines.length > 0 : Boolean(state?.hadReserve))
 
   if (loading) {
     return (
@@ -70,14 +96,30 @@ export default function OrderConfirmed() {
           variants={fadeUp}
           className="mt-8 text-center font-display text-4xl font-700 tracking-tight uppercase"
         >
-          {order?.paid ? 'Payment received' : 'Order received'}
+          {failed || order?.paid
+            ? 'Payment received'
+            : isReserve
+              ? 'Items reserved'
+              : 'Order received'}
         </motion.h1>
 
         <motion.p
           variants={fadeUp}
           className="mt-4 text-center leading-relaxed text-steel-300"
         >
-          {state?.via === 'phone' ? (
+          {failed ? (
+            <>
+              {name ? `Thanks ${name} — your` : 'Your'} card payment went
+              through. We couldn't pull up the details just now, so there's a
+              phone number below.
+            </>
+          ) : isReserve ? (
+            <>
+              {name ? `Thanks ${name} — your` : 'Your'} items are put aside at
+              the shop and nothing has been charged. We'll confirm your licence
+              and the final price when you collect.
+            </>
+          ) : state?.via === 'phone' ? (
             <>
               {name ? `Thanks ${name} — your` : 'Your'} order is saved below.
               Give the shop a call to confirm stock, final pricing and — where
@@ -91,6 +133,70 @@ export default function OrderConfirmed() {
             </>
           )}
         </motion.p>
+
+        {failed && (
+          <motion.div
+            variants={fadeUp}
+            className="mt-8 rounded-sm border border-amber-900/60 bg-amber-950/30 p-6"
+          >
+            <h2 className="text-eyebrow text-amber-200">
+              We couldn't load your receipt
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-steel-300">
+              Your card has been charged once, and once only — you are sent back
+              to this page after the payment goes through, so please don't try
+              again. We simply couldn't reach our own system to pull up what you
+              bought.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-steel-300">
+              Give us a call on{' '}
+              <a href={business.phoneHref} className="text-brass-400 hover:text-brass-300">
+                {business.phone}
+              </a>{' '}
+              quoting the Stripe receipt emailed to you, and we'll confirm
+              what's on its way.
+            </p>
+          </motion.div>
+        )}
+
+        {reference && (
+          <motion.div
+            variants={fadeUp}
+            className="mt-8 rounded-sm border border-brass-600/40 bg-brass-500/5 p-6 text-center"
+          >
+            <h2 className="text-eyebrow">Your reservation reference</h2>
+            <p className="mt-2 font-mono text-2xl tracking-widest text-brass-200">
+              {reference}
+            </p>
+            <p className="mt-3 text-sm text-steel-400">
+              Quote this when you call the shop or come in to collect.
+            </p>
+          </motion.div>
+        )}
+
+        {isReserve && reservedLines.length > 0 && (
+          <motion.div
+            variants={fadeUp}
+            className="mt-8 rounded-sm border border-steel-800 bg-steel-900/50 p-6"
+          >
+            <h2 className="text-eyebrow">Put aside for you</h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              {reservedLines.map((l) => (
+                <li key={l.slug} className="flex justify-between gap-3">
+                  <span className="text-steel-300">
+                    {l.qty}× {l.name}
+                  </span>
+                  <span className="font-mono text-steel-200">
+                    {formatPrice(l.price == null ? null : l.price * l.qty)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 border-t border-steel-800 pt-3 text-sm leading-relaxed text-steel-400">
+              {notices.reserve}
+            </p>
+          </motion.div>
+        )}
 
         {state?.via === 'phone' && state.summary && (
           <motion.div

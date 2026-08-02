@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# The shop's back office. Nothing here is secret — it is password protected —
+# but there is no reason for it to appear in search results.
+Disallow: /admin
+
+Sitemap: https://kampm-05.github.io/fisher-firearms/sitemap.xml

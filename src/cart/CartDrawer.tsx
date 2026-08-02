@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Lock, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react'
-import { useCart, type CartLine } from './CartContext'
+import { MAX_QTY, useCart, type CartLine } from './CartContext'
 import { formatPrice, productImage } from '../data/catalog'
 import { EASE } from '../lib/motion'
 import { notices } from '../data/site'
@@ -47,8 +47,9 @@ function Line({ line }: { line: CartLine }) {
             <button
               type="button"
               onClick={() => setQty(line.slug, line.qty + 1)}
+              disabled={line.qty >= MAX_QTY}
               aria-label={`Increase quantity of ${line.name}`}
-              className="grid h-7 w-7 place-items-center text-steel-400 hover:text-brass-300"
+              className="grid h-7 w-7 place-items-center text-steel-400 hover:text-brass-300 disabled:cursor-not-allowed disabled:text-steel-700 disabled:hover:text-steel-700"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -70,7 +71,7 @@ function Line({ line }: { line: CartLine }) {
 export default function CartDrawer() {
   const {
     isOpen, closeCart, lines, shipLines, reserveLines,
-    shipTotal, reserveTotal, count,
+    shipTotal, reserveTotal, count, notice, dismissNotice,
   } = useCart()
 
   return (
@@ -114,6 +115,20 @@ export default function CartDrawer() {
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </header>
+
+            {notice && (
+              <div className="flex items-start gap-3 border-b border-amber-900/50 bg-amber-950/30 px-5 py-3">
+                <p className="flex-1 text-xs leading-relaxed text-amber-200">{notice}</p>
+                <button
+                  type="button"
+                  onClick={dismissNotice}
+                  aria-label="Dismiss this notice"
+                  className="-mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-sm text-amber-300/70 hover:text-amber-100"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            )}
 
             {lines.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">

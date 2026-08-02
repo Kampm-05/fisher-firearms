@@ -18,11 +18,13 @@ function money(n: number) {
 }
 
 export function orderSummary(lines: CartLine[], details: OrderDetails): string {
+  // A zero price is the catalogue's way of saying none was published, so it
+  // reads as POA here too rather than quoting the shop $0.00 for a rifle.
   const group = (ls: CartLine[]) =>
     ls
       .map(
         (l) =>
-          `  ${l.qty} x ${l.name} — ${l.price == null ? 'POA' : money(l.price * l.qty)}`
+          `  ${l.qty} x ${l.name} — ${!l.price || l.price <= 0 ? 'POA' : money(l.price * l.qty)}`
       )
       .join('\n')
 

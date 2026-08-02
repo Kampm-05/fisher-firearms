@@ -14,7 +14,23 @@ ALLOWED_ORIGINS = "https://kampm-05.github.io,http://localhost:5180,http://local
 binding = "SHOP_KV"
 id = "b51b87ad214a4e7582fb0a38a38bbb4a"
 
+# Throttling. These use Cloudflare's own rate limiter rather than counters in
+# KV: a KV counter would spend the shop's 1,000 daily writes on every attacker
+# request and lock the owner out of their own admin panel.
+[[ratelimits]]
+name = "LOGIN_LIMIT"
+namespace_id = "1001"
+simple = { limit = 8, period = 60 }
+
+[[ratelimits]]
+name = "CHECKOUT_LIMIT"
+namespace_id = "1002"
+simple = { limit = 20, period = 60 }
+
 # Secrets — set with `wrangler secret put <NAME>`, never committed:
 #   STRIPE_SECRET_KEY      sk_test_... (or sk_live_... when going live)
 #   STRIPE_WEBHOOK_SECRET  whsec_...   (from the webhook endpoint)
 #   ADMIN_PASSWORD         the shop's admin password
+#
+# Optional: SHIPPING_FLAT_AUD — flat postage in dollars, e.g. "12.50".
+# Unset means postage is free; the delivery address is always collected.

@@ -59,8 +59,16 @@ function PistolPart({
   // resting diagram is a clean outline instead of overlapping strokes.
   const opacity = useTransform(t, [0, 0.3], [0, 1], { clamp: true })
 
+  /*
+   * Nothing moves when still, so the internals never clear the shell they sit
+   * inside — leaving them visible would draw the magazine, barrel and recoil
+   * spring straight through the frame, which is the exact tangle the opacity
+   * ramp exists to avoid. Hold them at zero and show the outline alone.
+   */
   const style = still
-    ? undefined
+    ? part.internal
+      ? { opacity: 0 }
+      : undefined
     : part.internal
       ? { x, y, opacity }
       : { x, y }
@@ -104,11 +112,20 @@ export default function PistolExploded() {
   const still = !!reduceMotion
   const headingOpacity = useTransform(progress, [0, 0.12], [1, 0.4])
 
+  /*
+   * The section's height is the animation's runway, and the animation is pure
+   * decoration: at 320vh a 375px phone asks for over two thousand pixels of
+   * thumb work before the customer reaches a single product, so small screens
+   * get a shorter runway. With reduced motion on there is nothing to scrub at
+   * all, so it collapses to one screen.
+   */
+  const runway = still ? 'h-dvh' : 'h-[200vh] sm:h-[320vh]'
+
   return (
     <section
       ref={ref}
       aria-labelledby="fieldstrip-heading"
-      className="relative h-[320vh] border-y border-steel-800 bg-steel-950"
+      className={`relative border-y border-steel-800 bg-steel-950 ${runway}`}
     >
       {/* min-h-0 lets the diagram shrink to whatever height is left, so it
           still fits when browser chrome eats into the viewport. */}

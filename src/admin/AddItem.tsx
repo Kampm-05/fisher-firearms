@@ -1,6 +1,14 @@
 import { useState, type ChangeEvent } from 'react'
-import { ArrowLeft, ArrowRight, Camera, Check, Lock, ShoppingBag } from 'lucide-react'
-import { adminCreate } from '../lib/api'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Camera,
+  Check,
+  Loader2,
+  Lock,
+  ShoppingBag,
+} from 'lucide-react'
+import { adminCreate, AuthError } from '../lib/api'
 import { firearmCategories, gearCategories } from '../data/site'
 import { formatPrice } from '../data/catalog'
 
@@ -36,6 +44,13 @@ const ALL_CATEGORIES = [
   ...firearmCategories.map((c) => ({ slug: c.slug, name: c.name, licensed: true })),
   ...gearCategories.map((c) => ({ slug: c.slug, name: c.name, licensed: false })),
 ]
+
+/*
+ * Phone cameras happily produce 50MB HEIC-sized files. Shrinking one blocks
+ * the browser for as long as it takes, so anything this far past a normal
+ * photo is turned away by name rather than left to freeze the screen.
+ */
+const MAX_PHOTO_BYTES = 20 * 1024 * 1024
 
 /** Shrinks a phone photo to something sensible before it goes in the database. */
 function shrinkImage(file: File, max = 800): Promise<string> {
@@ -83,10 +98,17 @@ function Step({
   )
 }
 
-export default function AddItem({ onDone }: { onDone: () => void }) {
+export default function AddItem({
+  onDone,
+  onSignedOut,
+}: {
+  onDone: () => void
+  onSignedOut: () => void
+}) {
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [busy, setBusy] = useState(false)
+  const [shrinking, setShrinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
@@ -97,10 +119,29 @@ export default function AddItem({ onDone }: { onDone: () => void }) {
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
+
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError(
+        'That photo is too large to use. Take it again on a lower quality setting, or pick a different one.'
+      )
+      // Clear the box so choosing the same file again still fires onChange.
+      e.target.value = ''
+      return
+    }
+
+    /*
+     * A 12MP photo takes one to three seconds, and the browser is frozen for
+     * most of it. Without saying so the box still reads "Tap to choose a
+     * photo", so the natural response is to tap it again.
+     */
+    setShrinking(true)
     try {
       set('photo', await shrinkImage(file))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not use that photo.')
+    } finally {
+      setShrinking(false)
+      e.target.value = ''
     }
   }
 
@@ -119,6 +160,10 @@ export default function AddItem({ onDone }: { onDone: () => void }) {
       })
       setDone(true)
     } catch (err) {
+      if (err instanceof AuthError) {
+        onSignedOut()
+        return
+      }
       setError(err instanceof Error ? err.message : 'Could not add the item.')
     } finally {
       setBusy(false)
@@ -166,10 +211,24 @@ export default function AddItem({ onDone }: { onDone: () => void }) {
           title="Take a photo"
           hint="A clear photo of the item. You can skip this and add one later."
         >
-          <label className="block cursor-pointer">
-            <input type="file" accept="image/*" onChange={onPhoto} className="sr-only" />
+          <label className={`block ${shrinking ? 'cursor-progress' : 'cursor-pointer'}`}>
+            <input
+              type="file"
+              accept="image/*"
+              disabled={shrinking}
+              onChange={onPhoto}
+              className="sr-only"
+            />
             <div className="grid aspect-video place-items-center rounded-sm border-2 border-dashed border-steel-700 bg-steel-900/40 transition-colors hover:border-brass-500/60">
-              {draft.photo ? (
+              {shrinking ? (
+                <span
+                  role="status"
+                  className="flex flex-col items-center gap-3 text-brass-300"
+                >
+                  <Loader2 className="h-10 w-10 animate-spin" aria-hidden="true" />
+                  Getting your photo ready…
+                </span>
+              ) : draft.photo ? (
                 <img
                   src={draft.photo}
                   alt=""
@@ -183,7 +242,12 @@ export default function AddItem({ onDone }: { onDone: () => void }) {
               )}
             </div>
           </label>
-          {draft.photo && (
+          {shrinking && (
+            <p className="mt-3 text-sm text-steel-400">
+              Big photos take a few seconds. You don't need to tap again.
+            </p>
+          )}
+          {draft.photo && !shrinking && (
             <button
               type="button"
               onClick={() => set('photo', null)}
@@ -408,8 +472,8 @@ export default function AddItem({ onDone }: { onDone: () => void }) {
         )}
         <button
           type="button"
-          disabled={!current.valid || busy}
-          onClick={() => (last ? submit() : setStep((s) => s + 1))}
+          disabled={!current.valid || busy || shrinking}
+          onClick={() => (last ? void submit() : setStep((s) => s + 1))}
           className="btn-primary flex-1 justify-center py-4 text-base"
         >
           {busy ? 'Adding…' : last ? 'Put it on the website' : 'Next'}

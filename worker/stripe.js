@@ -78,14 +78,25 @@ function safeEqual(a, b) {
  * orders paid.
  */
 export async function verifyWebhook(rawBody, header, secret, toleranceSeconds = 300) {
-  if (!header) return false
+  // An unset secret must reject everything. Left to itself, TextEncoder turns
+  // `undefined` into a zero-length key, and every event would be checked
+  // against a key an attacker could reproduce.
+  if (!header || !secret) return false
 
-  const parts = Object.fromEntries(
-    header.split(',').map((kv) => kv.split('=').map((s) => s.trim()))
-  )
-  const timestamp = parts.t
-  const signature = parts.v1
-  if (!timestamp || !signature) return false
+  /*
+   * Stripe sends `t=<timestamp>,v1=<sig>`, and during a secret rotation it
+   * sends one `v1` per active secret. Splitting on the first `=` only keeps
+   * base64 padding intact, and collecting every `v1` means a rotation doesn't
+   * start rejecting genuine events.
+   */
+  const pairs = header.split(',').map((part) => {
+    const at = part.indexOf('=')
+    return at === -1 ? ['', ''] : [part.slice(0, at).trim(), part.slice(at + 1).trim()]
+  })
+
+  const timestamp = pairs.find(([key]) => key === 't')?.[1]
+  const signatures = pairs.filter(([key]) => key === 'v1').map(([, value]) => value)
+  if (!timestamp || signatures.length === 0) return false
 
   // Reject replays of an old, legitimately-signed event.
   const age = Math.abs(Date.now() / 1000 - Number(timestamp))
@@ -107,5 +118,5 @@ export async function verifyWebhook(rawBody, header, secret, toleranceSeconds = 
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 
-  return safeEqual(expected, signature)
+  return signatures.some((signature) => safeEqual(expected, signature))
 }

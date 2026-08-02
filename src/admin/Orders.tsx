@@ -1,26 +1,40 @@
-import { useEffect, useState } from 'react'
-import { Lock, PackageCheck, ShoppingBag } from 'lucide-react'
-import { adminOrders, type AdminOrder } from '../lib/api'
+import { useCallback, useEffect, useState } from 'react'
+import { Lock, PackageCheck, RotateCcw, ShoppingBag } from 'lucide-react'
+import { adminOrders, AuthError, type AdminOrder } from '../lib/api'
 import { formatPrice } from '../data/catalog'
 
 /** What the shop needs to see: who bought what, and what to put aside. */
-export default function Orders() {
+export default function Orders({ onSignedOut }: { onSignedOut: () => void }) {
   const [orders, setOrders] = useState<AdminOrder[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const load = useCallback(async () => {
+    setError(null)
+    try {
+      const { orders } = await adminOrders()
+      setOrders(orders)
+    } catch (err) {
+      if (err instanceof AuthError) {
+        onSignedOut()
+        return
+      }
+      setError(err instanceof Error ? err.message : 'Could not load orders.')
+    }
+  }, [onSignedOut])
+
   useEffect(() => {
-    adminOrders()
-      .then(({ orders }) => setOrders(orders))
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : 'Could not load orders.')
-      )
-  }, [])
+    void load()
+  }, [load])
 
   if (error) {
     return (
-      <p className="rounded-sm border border-red-900/60 bg-red-950/40 p-4 text-red-300">
-        {error}
-      </p>
+      <div className="rounded-sm border border-red-900/60 bg-red-950/40 p-4">
+        <p className="text-red-300">{error}</p>
+        <button type="button" onClick={() => void load()} className="btn-ghost mt-4 py-3">
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          Try again
+        </button>
+      </div>
     )
   }
 

@@ -119,36 +119,48 @@ function applyOverrides(
   return merged.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** Products for one category slug. Resolves to [] when there's no data yet. */
+/**
+ * Products for one category slug. Resolves to [] when there's no data yet, and
+ * never rejects.
+ *
+ * The live layer is a bonus, never a dependency. A category chunk that 404s
+ * after a redeploy while the page is open, a captive portal answering 200 with
+ * its own login page, or a snapshot missing `products` would otherwise reject
+ * here and leave the customer on "Loading stock…" for good.
+ */
 export function loadCategory(category: string): Promise<Product[]> {
   const cached = cache.get(category)
   if (cached) return cached
 
   const loader = loaderFor(category)
   const base: Promise<Product[]> = loader
-    ? loader().then((m) => m.default ?? [])
+    ? loader().then((m) => m.default ?? []).catch(() => [])
     : Promise.resolve([])
 
-  const promise = Promise.all([base, liveChanges()]).then(([products, live]) =>
-    applyOverrides(products, category, live)
-  )
+  const promise = base.then(async (products) => {
+    try {
+      return applyOverrides(products, category, await liveChanges())
+    } catch {
+      return products
+    }
+  })
 
   cache.set(category, promise)
   return promise
 }
 
-/** Find a single product by slug, searching categories until it turns up. */
+/** Find a single product by slug, searching every category at once. */
 export async function findProduct(slug: string): Promise<Product | null> {
   const categories = Object.keys(loaders)
     .map((k) => k.replace('./catalog/', '').replace('.json', ''))
     .filter((c) => c !== 'index' && c !== 'uncategorised')
 
-  for (const category of categories) {
-    const products = await loadCategory(category)
-    const hit = products.find((p) => p.slug === slug)
-    if (hit) return hit
-  }
-  return null
+  // In parallel, or a deep link into a department that sorts last waits on
+  // fifteen dynamic imports in sequence before anything renders.
+  const hits = await Promise.all(
+    categories.map(async (c) => (await loadCategory(c)).find((p) => p.slug === slug))
+  )
+  return hits.find((p) => p !== undefined) ?? null
 }
 
 /**
@@ -171,8 +183,13 @@ const AUD = new Intl.NumberFormat('en-AU', {
   minimumFractionDigits: 2,
 })
 
+/**
+ * A price of zero is the scrape's way of saying the shop didn't publish one —
+ * it is not free. Rendering "$0.00" against a Remington 700 is worse than
+ * saying nothing, so anything without a real price is priced on application.
+ */
 export function formatPrice(price: number | null): string {
-  return price == null ? 'POA' : AUD.format(price)
+  return price == null || price <= 0 ? 'POA' : AUD.format(price)
 }
 
 export const SALE_LABEL: Record<SaleType, string> = {

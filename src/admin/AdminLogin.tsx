@@ -4,7 +4,14 @@ import { adminLogin } from '../lib/api'
 import logo from '../assets/ffa-logo.png'
 
 /** One box, one button. Signs in and stays signed in on this device. */
-export default function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
+export default function AdminLogin({
+  onSuccess,
+  notice = null,
+}: {
+  onSuccess: () => void
+  /** Why they were sent back here, when they didn't ask to sign out. */
+  notice?: string | null
+}) {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +42,15 @@ export default function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         <p className="mt-3 text-steel-400">
           Enter your password to change stock and prices.
         </p>
+
+        {notice && (
+          <p
+            role="status"
+            className="mt-6 rounded-sm border border-amber-900/60 bg-amber-950/30 p-3 text-sm leading-relaxed text-amber-200"
+          >
+            {notice}
+          </p>
+        )}
 
         <label className="mt-8 block text-left">
           <span className="mb-2 block text-sm text-steel-300">Password</span>

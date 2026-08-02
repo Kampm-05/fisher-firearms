@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { AlertCircle, CreditCard, Lock, ShoppingBag } from 'lucide-react'
+import { AlertCircle, CreditCard, Lock, ShoppingBag, Trash2 } from 'lucide-react'
 import { useCart } from '../cart/CartContext'
+import { forgetReserve, rememberReserve } from '../cart/reserveReference'
 import { submitOrder, type OrderDetails } from '../cart/submitOrder'
-import { createCheckout, hasApi } from '../lib/api'
+import { CartError, createCheckout, createReserve, hasApi, type LineError } from '../lib/api'
 import { formatPrice } from '../data/catalog'
 import PageHeader from '../components/PageHeader'
 import { fadeUp, inView } from '../lib/motion'
@@ -13,7 +14,8 @@ import { business, notices } from '../data/site'
 export default function Checkout() {
   const navigate = useNavigate()
   const {
-    lines, shipLines, reserveLines, shipTotal, reserveTotal, needsLicence, clear,
+    lines, shipLines, reserveLines, shipTotal, reserveTotal, needsLicence,
+    clear, remove, notice,
   } = useCart()
 
   const [details, setDetails] = useState<OrderDetails>({
@@ -21,12 +23,21 @@ export default function Checkout() {
   })
   const [ack, setAck] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [lineErrors, setLineErrors] = useState<LineError[]>([])
   const [error, setError] = useState<string | null>(
     // Stripe sends the customer back here with ?cancelled=1 if they back out.
     new URLSearchParams(window.location.search).has('cancelled')
       ? 'Payment was cancelled — your cart is still here.'
       : null
   )
+
+  /*
+   * The reservation already lodged for this basket. Kept so that a card
+   * payment failing halfway through a mixed order doesn't lodge a second
+   * reservation for the same goods every time the customer tries again.
+   */
+  const lodged = useRef<{ key: string; reference: string } | null>(null)
+  const reserveKey = reserveLines.map((l) => `${l.slug}:${l.qty}`).join(',')
 
   const set = <K extends keyof OrderDetails>(key: K, value: OrderDetails[K]) =>
     setDetails((d) => ({ ...d, [key]: value }))
@@ -47,34 +58,63 @@ export default function Checkout() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setLineErrors([])
     setBusy(true)
 
     /*
-     * If the shop's payment API is live and there's something shippable in the
-     * cart, hand off to Stripe's hosted checkout. The server re-prices every
-     * line and refuses anything licensed, so a tampered cart can't get through.
-     * Reserve-only orders never touch Stripe — nothing is charged for them.
+     * With the shop's API live every order is recorded there, whatever is in
+     * the basket. Licensed goods are lodged first and always: leaving them
+     * until after the Stripe redirect means they are never lodged at all,
+     * because the customer has left the page by then.
+     *
+     * The server re-prices every line and refuses anything licensed on the
+     * payment call, so a tampered cart can't get through either route.
      */
-    if (hasApi() && shipLines.length > 0) {
+    if (hasApi()) {
       try {
-        const { url } = await createCheckout({
-          lines: shipLines.map((l) => ({ slug: l.slug, qty: l.qty })),
-          reserveLines: reserveLines.map((l) => ({
-            slug: l.slug,
-            name: l.name,
-            price: l.price,
-            qty: l.qty,
-          })),
-          customer: { ...details },
+        // Whatever the last order left behind is not this one's.
+        forgetReserve()
+
+        if (reserveLines.length > 0 && lodged.current?.key !== reserveKey) {
+          const { reference } = await createReserve({
+            lines: reserveLines.map((l) => ({ slug: l.slug, qty: l.qty })),
+            customer: { ...details },
+          })
+          lodged.current = { key: reserveKey, reference }
+        }
+        const reference = lodged.current?.reference ?? null
+
+        if (shipLines.length > 0) {
+          const { url } = await createCheckout({
+            lines: shipLines.map((l) => ({ slug: l.slug, qty: l.qty })),
+            customer: { ...details },
+          })
+          // Router state doesn't survive the trip out to Stripe and back.
+          if (reference) rememberReserve(reference)
+          // Leave the cart intact: if they abandon payment it's still there.
+          window.location.href = url
+          return
+        }
+
+        // Nothing to charge for, so there is no payment page to visit. The
+        // lines travel with it: the cart is about to be emptied, and the
+        // customer should still see what the shop is holding.
+        const reserved = reserveLines.map(({ slug, name, price, qty }) => ({
+          slug, name, price, qty,
+        }))
+        clear()
+        navigate('/order-confirmed', {
+          state: { name: details.name, via: 'reserve', hadReserve: true, reference, reserved },
         })
-        // Leave the cart intact: if they abandon payment it's still there.
-        window.location.href = url
         return
       } catch (err) {
         setBusy(false)
-        setError(
-          err instanceof Error ? err.message : 'Could not start the payment.'
-        )
+        // A refused basket names every line at fault, so each gets its own row.
+        if (err instanceof CartError) {
+          setLineErrors(err.errors)
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Could not place the order.')
         return
       }
     }
@@ -111,6 +151,13 @@ export default function Checkout() {
       />
 
       <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20">
+        {notice && (
+          <p className="mb-10 flex items-start gap-2.5 rounded-sm border border-amber-900/60 bg-amber-950/30 p-4 text-sm leading-relaxed text-amber-200">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            {notice}
+          </p>
+        )}
+
         <div className="grid gap-12 lg:grid-cols-[1.2fr_1fr]">
           <motion.form
             variants={fadeUp}
@@ -260,6 +307,56 @@ export default function Checkout() {
                     </span>
                   </p>
                 )}
+              </div>
+            )}
+
+            {lineErrors.length > 0 && (
+              <div className="rounded-sm border border-red-900/60 bg-red-950/40 p-5">
+                <h2 className="text-eyebrow flex items-center gap-2 text-red-300">
+                  <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                  {lineErrors.length === 1
+                    ? 'One item needs sorting out'
+                    : `${lineErrors.length} items need sorting out`}
+                </h2>
+                <ul className="mt-4 space-y-4">
+                  {lineErrors.map((e) => (
+                    <li
+                      key={e.slug}
+                      className="flex flex-wrap items-start justify-between gap-3 border-t border-red-900/40 pt-4 first:border-0 first:pt-0"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-steel-200">
+                          {lines.find((l) => l.slug === e.slug)?.name ?? e.slug}
+                        </p>
+                        <p className="mt-1 text-sm leading-relaxed text-red-300">
+                          {e.message}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          remove(e.slug)
+                          setLineErrors((prev) => prev.filter((x) => x.slug !== e.slug))
+                        }}
+                        className="btn-ghost shrink-0 px-4 py-2 text-sm"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-4 text-xs leading-relaxed text-steel-400">
+                  Take these out to carry on with the rest of your order, or call
+                  the shop on{' '}
+                  <a
+                    href={business.phoneHref}
+                    className="text-brass-400 transition-colors hover:text-brass-300"
+                  >
+                    {business.phone}
+                  </a>{' '}
+                  and we'll sort it out with you.
+                </p>
               </div>
             )}
 

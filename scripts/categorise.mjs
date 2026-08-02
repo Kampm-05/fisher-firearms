@@ -65,6 +65,27 @@ const REGULATED = /\b(powder|primers?|propellant|smokeless|adi\s*(ar|as|bm)?\d|g
 const IS_FIREARM = /\b(rifle|shotgun|carbine|pistol|revolver|receiver|lever action|bolt action|pump action)\b/i
 
 /**
+ * The shop's own words for a regulated item, wherever they appear.
+ *
+ * These phrases are lifted straight from the product descriptions — "Cat C
+ * sold only to dealer or proof at our premises of a Cat C licence" — and are
+ * the most reliable signal there is, because they are the shop stating that
+ * the law applies to this line. A name alone never says it: the department is
+ * "parts", the name is "Winchester 190", and only the description reveals a
+ * Category D trigger assembly.
+ */
+const LICENCE_TEXT =
+  /\bcat(?:egory)?\.?\s*[abcdh]\b|\bdealer (?:only|sale)|\bto dealer\b|our premises|permit to acquire|serial number/i
+
+/**
+ * Firearm components that are regulated in their own right. Applied only
+ * inside the parts department, because a bore cleaner that mentions "barrel"
+ * is a bottle of solvent, not a barrel.
+ */
+const REGULATED_PART =
+  /\b(barrel|receiver|bolt (?:assembly|complete)|trigger (?:group|assembly|mechanism)|magazine|frame|slide arm)\b/i
+
+/**
  * Longest matching prefix wins. Plain `startsWith` (rather than requiring a
  * trailing slash) so the shop's flat one-off paths like
  * `/category/ammunition-centrefire-7mm-prc` land with their parent department.
@@ -95,7 +116,16 @@ function decideSaleType(product, category) {
   if (FIREARM_SLUGS.has(category)) return 'reserve'
   if (NEVER_SHIP.has(category)) return 'reserve'
   if (REGULATED.test(product.name)) return 'reserve'
-  if (category === 'parts' && /\bmagazine\b/i.test(product.name)) return 'reserve'
+
+  /*
+   * The description is where the shop records the legal class, so it has to be
+   * read. Getting this wrong in the lenient direction means posting a Category
+   * D component to an unlicensed buyer, so anything ambiguous stays reserve —
+   * the cost of being wrong the other way is only that a customer rings up.
+   */
+  const text = `${product.name} ${product.description ?? ''}`
+  if (LICENCE_TEXT.test(text)) return 'reserve'
+  if (category === 'parts' && REGULATED_PART.test(text)) return 'reserve'
   if (IS_FIREARM.test(product.name) && !/\b(case|bag|sling|scope|mount|rest|cover|cleaning|kit)\b/i.test(product.name)) {
     return 'reserve'
   }

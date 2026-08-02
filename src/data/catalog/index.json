@@ -50,8 +50,8 @@
   {
     "category": "parts",
     "count": 103,
-    "ship": 69,
-    "reserve": 20
+    "ship": 34,
+    "reserve": 56
   },
   {
     "category": "reloading",
@@ -75,7 +75,7 @@
     "category": "storage",
     "count": 6,
     "ship": 0,
-    "reserve": 0
+    "reserve": 1
   },
   {
     "category": "targets",

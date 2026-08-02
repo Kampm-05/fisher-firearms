@@ -254,9 +254,14 @@ export const notices = {
 } as const
 
 /**
- * The existing site publishes no email address — only the phone number and a
- * contact form. So this is deliberately empty until the shop confirms one;
- * set VITE_CONTACT_EMAIL to switch on the mailto fallbacks. Until then forms
- * post to Formspree and every fallback points at the phone instead.
+ * The old site's header publishes no email, but the shop writes this address
+ * into its own product descriptions 121 times — "Contact us at 08 8362 8977 or
+ * email sales@fisherfirearms.com.au" — alongside the same phone number that
+ * appears above. So it is theirs and already public, not something invented
+ * here. VITE_CONTACT_EMAIL overrides it if they would rather use another.
+ *
+ * Enquiries go to the shop's admin panel regardless; this is the fallback
+ * shown when someone would rather write their own email.
  */
-export const contactEmail: string = import.meta.env.VITE_CONTACT_EMAIL ?? ''
+export const contactEmail: string =
+  import.meta.env.VITE_CONTACT_EMAIL ?? 'sales@fisherfirearms.com.au'

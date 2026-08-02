@@ -29,6 +29,23 @@ jobs:
 
       - run: npm ci
 
+      # Gates, in the order that fails fastest. Each one blocks the deploy, so
+      # a broken build or a licensed item marked postable can never reach the
+      # live shop.
+      - name: Lint
+        run: npm run lint
+
+      - name: Check the shop's rules still hold
+        # Needs no secrets and no network: sale-type law, pricing, validation
+        # and webhook signature checks.
+        run: node worker/test-unit.mjs
+
+      - name: Report known vulnerabilities
+        # Advisory only — a new advisory in a dev dependency should not stop
+        # the shop deploying a price change.
+        continue-on-error: true
+        run: npm audit --omit=dev
+
       - name: Build
         env:
           # Project sites are served from /<repo>/, so the bundle needs that base.

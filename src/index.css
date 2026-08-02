@@ -3,25 +3,37 @@
 /*
   Fisher Firearms design system
   Style: Modern Dark (cinematic) — gunmetal base, brass accent.
-  Never pure #000 (OLED smear); accent pairs checked for 4.5:1 on surface.
+  Never pure #000 (OLED smear).
+
+  The ramp splits in two, and the split is the rule that keeps the site
+  readable: steel-700 and darker are surfaces, borders and dividers ONLY —
+  none of them is legible as text. steel-600 and lighter are the text tokens,
+  and every one clears WCAG AA 4.5:1 on both `void` and `steel-900`, the
+  darkest and lightest backgrounds body copy ever sits on. Brass follows the
+  same shape: brass-500 and lighter are safe as text, brass-600 is a border
+  colour (3.8:1) and must not carry words.
 */
 @theme {
   --font-display: 'Barlow Condensed', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* Surfaces — gunmetal ramp */
+  /* Surfaces — gunmetal ramp (void … steel-700: never used for text) */
   --color-void: #0d1013;
   --color-steel-950: #101418;
   --color-steel-900: #161b21;
   --color-steel-800: #1e252d;
   --color-steel-700: #2b343e;
-  --color-steel-600: #3d4854;
-  --color-steel-500: #5b6875;
-  --color-steel-400: #8794a1;
-  --color-steel-300: #b3bdc7;
-  --color-steel-200: #d6dce2;
-  --color-steel-100: #eef1f4;
+
+  /* Text — every step below clears 4.5:1 on void and on steel-900.
+     The old steel-600 (#3d4854) measured 2.05:1 and was setting the legal
+     notice about firearms never being posted, at 11px. */
+  --color-steel-600: #788592; /* 5.06:1 on void · 4.59:1 on steel-900 */
+  --color-steel-500: #8b98a5; /* 6.48:1 · 5.88:1 */
+  --color-steel-400: #9eabb8; /* 8.15:1 · 7.40:1 */
+  --color-steel-300: #b3bdc7; /* 10.01:1 · 9.09:1 */
+  --color-steel-200: #d6dce2; /* 13.81:1 · 12.53:1 */
+  --color-steel-100: #eef1f4; /* 16.83:1 · 15.27:1 */
 
   /* Brass accent */
   --color-brass-600: #8a6a1f;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Phone, ShoppingBag } from 'lucide-react'
@@ -48,10 +48,13 @@ function Wordmark() {
   )
 }
 
+const MENU_ID = 'mobile-menu'
+
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const location = useLocation()
+  const toggleRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -60,8 +63,22 @@ export default function Header() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Close the mobile drawer whenever the route changes.
+  // Close the mobile drawer whenever the route changes. Focus is left alone
+  // here — the new page should have it, not the button behind the menu.
   useEffect(() => setOpen(false), [location.pathname])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      // Escape has to hand the keyboard back to the button that opened the
+      // menu, otherwise focus is stranded on an element that no longer exists.
+      toggleRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
 
   return (
     <header
@@ -117,9 +134,11 @@ export default function Header() {
           <CartButton />
 
           <button
+            ref={toggleRef}
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
+            aria-controls={MENU_ID}
             aria-label={open ? 'Close menu' : 'Open menu'}
             className="grid h-11 w-11 place-items-center rounded-sm border border-steel-700 text-steel-200 transition-colors hover:border-brass-500 hover:text-brass-300 lg:hidden"
           >
@@ -135,6 +154,7 @@ export default function Header() {
       <AnimatePresence>
         {open && (
           <motion.nav
+            id={MENU_ID}
             aria-label="Mobile"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
