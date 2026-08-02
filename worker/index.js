@@ -85,6 +85,17 @@ const toCents = (dollars) => Math.round(Number(dollars) * 100)
 const clientIp = (request) => request.headers.get('CF-Connecting-IP') ?? 'unknown'
 
 /**
+ * A short reference a customer can read down the phone, with enough randomness
+ * that nobody can guess someone else's. Ambiguous characters are left out so
+ * "was that a one or an I?" never comes up.
+ */
+function randomRef(length = 10) {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(length))
+  return [...bytes].map((b) => alphabet[b % alphabet.length]).join('')
+}
+
+/**
  * Cloudflare's rate-limit binding. It costs no KV quota, which matters: a
  * counter kept in KV would let anyone burn the shop's 1,000 daily writes and
  * lock the owner out of their own admin panel. Absent binding (local dev)
@@ -314,7 +325,14 @@ async function handleReserve(request, env) {
   const { items, errors } = await validateCart(body.lines, env, { requireShippable: false })
   if (errors.length) return json({ error: errors[0].message, errors }, request, env, 400)
 
-  const reference = `R${Date.now().toString(36).toUpperCase()}`
+  /*
+   * The reference is also the key to reading the order back, and
+   * `/api/order/:id` is deliberately unauthenticated so a customer can check
+   * theirs. A timestamp alone would be guessable, and walking a morning's
+   * worth of them would reveal who has reserved which firearm — so most of it
+   * is random.
+   */
+  const reference = `R${randomRef()}`
   await env.SHOP_KV.put(
     `order:${reference}`,
     JSON.stringify({
@@ -347,7 +365,7 @@ async function handleMessage(request, env) {
   }
 
   const subject = cleanText(body.subject, { max: 120, field: 'subject' })
-  const reference = `M${Date.now().toString(36).toUpperCase()}`
+  const reference = `M${randomRef()}`
   await env.SHOP_KV.put(
     `message:${reference}`,
     JSON.stringify({ id: reference, created: new Date().toISOString(), subject, customer }),

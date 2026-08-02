@@ -13,7 +13,7 @@ export default function Firearms() {
       <PageHeader
         eyebrow="Stock list"
         title="Firearms"
-        lead="Six classes across the racks. Pick one to see the brands we carry — stock changes daily and can't be reserved online, so call the shop to check what's in before you make the trip."
+        lead="Six classes across the racks. Pick one to see the brands we carry. Stock changes daily — you can reserve online for collection, but call ahead if you're travelling for something particular."
       />
 
       <motion.ul

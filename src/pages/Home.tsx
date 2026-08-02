@@ -138,7 +138,7 @@ export default function Home() {
           <SectionHeading
             eyebrow="Come in and have a look"
             title="Visit the shop"
-            lead="Stock moves quickly and can't be reserved online. Call ahead or drop in — we'll put it in your hands and talk you through it."
+            lead="Stock moves quickly. Reserve online to have it put aside, or drop in — we'll put it in your hands and talk you through it."
           />
 
           <motion.div variants={fadeUp} {...inView} className="space-y-8">

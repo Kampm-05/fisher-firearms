@@ -3,9 +3,7 @@ import { motion } from 'framer-motion'
 import { Check, Mail, Send } from 'lucide-react'
 import { fadeUp, inView } from '../lib/motion'
 import { business, contactEmail } from '../data/site'
-
-/** Formspree form id. Empty -> the form falls back to a mailto: draft. */
-const FORM_ID = import.meta.env.VITE_FORMSPREE_CONTACT_ID ?? ''
+import { hasApi, sendMessage } from '../lib/api'
 
 const SUBJECTS = [
   'General enquiry',
@@ -21,6 +19,7 @@ export default function ContactForm() {
   })
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
+  const [reference, setReference] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const set = (key: keyof typeof form, value: string) =>
@@ -45,34 +44,34 @@ export default function ContactForm() {
     e.preventDefault()
     setError(null)
 
-    if (!FORM_ID) {
-      // No form backend configured yet. Use a mail draft when an address is
-      // known; otherwise point the customer at the phone rather than pretend.
-      if (contactEmail) {
-        window.location.href = mailtoHref()
-        setSent(true)
-      } else {
-        setError(
-          'The message form is not connected yet — please call the shop and we will help you straight away.'
-        )
-      }
+    /*
+     * Messages go to the shop's own system, where they show up in the back
+     * office alongside orders. Without it there is nowhere to deliver to, so
+     * the form opens a mail draft rather than accepting a message it can't
+     * actually send.
+     */
+    if (!hasApi()) {
+      window.location.href = mailtoHref()
+      setSent(true)
       return
     }
 
     setBusy(true)
     try {
-      const res = await fetch(`https://formspree.io/f/${FORM_ID}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(form),
+      const { reference } = await sendMessage({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        notes: form.message,
+        subject: form.subject,
       })
-      if (!res.ok) throw new Error(`Formspree responded ${res.status}`)
+      setReference(reference)
       setSent(true)
     } catch (err) {
       setError(
         err instanceof Error
-          ? `${err.message}. You can email us directly instead.`
-          : 'Could not send. You can email us directly instead.'
+          ? err.message
+          : `Could not send that just now. Please call the shop on ${business.phone}.`
       )
     } finally {
       setBusy(false)
@@ -91,10 +90,15 @@ export default function ContactForm() {
           Message sent
         </h3>
         <p className="mt-3 text-steel-300">
-          {FORM_ID
-            ? "Thanks — we'll get back to you shortly."
+          {reference
+            ? "Thanks — it's with the shop and we'll get back to you shortly."
             : 'Your email app should have opened with the message ready to send.'}
         </p>
+        {reference && (
+          <p className="mt-4 font-mono text-sm text-brass-300">
+            Your reference is {reference}
+          </p>
+        )}
       </motion.div>
     )
   }
