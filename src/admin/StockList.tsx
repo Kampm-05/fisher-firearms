@@ -20,9 +20,12 @@ import {
 import { firearmCategories, gearCategories } from '../data/site'
 import { formatPrice } from '../data/catalog'
 
-const CATEGORY_NAME: Record<string, string> = Object.fromEntries(
-  [...firearmCategories, ...gearCategories].map((c) => [c.slug, c.name])
-)
+const CATEGORY_NAME: Record<string, string> = {
+  ...Object.fromEntries([...firearmCategories, ...gearCategories].map((c) => [c.slug, c.name])),
+  // Sold on the site but not one of the browsable departments, so it isn't in
+  // either list above — without this the shop sees the raw slug.
+  'gift-certificates': 'Gift Certificates',
+}
 
 /** Effective selling price: the shop's override wins over the catalogue price. */
 const priceOf = (p: AdminProduct) => p.price ?? p.basePrice
